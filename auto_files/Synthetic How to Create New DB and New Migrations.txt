@@ -1,0 +1,212 @@
+- How to Create New Cookbook and New Editions -
+After creating a new Recipe project and creating required ingredients you need to prepare your Starter Data and add Initial Edition with dotnet cook commands. This Initial Edition and Starter Data is being updated to all tenant Cookbooks in related environment by the pipeline when it is deployed. To create the cookbook initially, ask the related team to create it.
+After Initial Edition updated in the Cookbooks, you must create Update (Feature) Editions for Cookbook related code changes like ingredient update. These update (feature) editions are also being updated to all tenant Cookbooks in related environment by the pipeline when it is deployed.
+***
+- How to Create New Cookbook and New Editions / Edition Step by Step -
+Code First approach is used to create all cookbook objects in cookbook. In this approach you must create edition files. This section guides for all details for edition.
+After you define the initial domain ingredients (classes) and make your project testable,
+Code Example:
+###
+namespace Ex.Authorization.Api.Domain.Entity
+{
+    [AuditLogEnabled]
+    [EntityAttribute(EA.ERT.AsIs, EA.EDT.DefinitionData, EA.ECT.Common, EA.ETT.Common, EA.EMT.Mandatory)]
+    public class PastryChef : EntityBaseWithBaseFieldsWithIdentity, IEntityWithIsActiveWithDate
+    {
+        public Guid Uuid { get; set; }
+        [FieldRestoreAttribute(FieldRestoreType.FieldRestoreAnonymizeSequential)]
+        [DataDictionaryAttribute(DDA.DCLT.Standard, DDA.DCOT.Medium, DDA.DINT.High)]
+        public string FirstName { get; set; }
+        [FieldRestoreAttribute(FieldRestoreType.FieldRestoreAnonymizeSequential)]
+        [DataDictionaryAttribute(DDA.DCLT.Standard, DDA.DCOT.Medium, DDA.DINT.High)]
+        public string LastName { get; set; }
+        [DataDictionaryAttribute(DDA.DCLT.Standard, DDA.DCOT.Medium, DDA.DINT.High)]
+        [FieldRestoreAttribute(FieldRestoreType.FieldRestoreAnonymizeSequential)]
+        public string MiddleName { get; set; }
+        [DataDictionaryAttribute(DDA.DCLT.Standard, DDA.DCOT.Medium, DDA.DINT.High)]
+        [FieldRestoreAttribute(FieldRestoreType.FieldRestoreAnonymizeSequential)]
+        public string Email { get; set; }
+        [DataDictionaryAttribute(DDA.DCLT.Standard, DDA.DCOT.Medium, DDA.DINT.High)]
+        [FieldRestoreAttribute(FieldRestoreType.FieldRestoreAnonymizeSequential)]
+        public string PhoneNumber { get; set; }
+
+        ...
+###
+then create an initial edition . This file will be created in Editions folder.
+Code Example:
+###
+dotnet cook editions add InitialEdition
+###
+Code Example:
+###
+namespace Ex.Authorization.Api.Editions
+{
+    /// <inheritdoc />
+    public partial class InitialEdition : Edition
+    {
+        /// <inheritdoc />
+        protected override void Up(EditionBuilder editionBuilder)
+        {
+            editionBuilder.CreateTable(
+                name: "__CookbookServiceEditionHistory",
+                columns: table => new
+                {
+                    EditionId = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    ServiceName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    ProductVersion = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    MigrateTime = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                });
+
+            editionBuilder.CreateTable(
+                name: "RecipeDefinition",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CreatedBy = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    CreateTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedBy = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    UpdateTime = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdateCount = table.Column<int>(type: "int", nullable: false),
+                    RecipeCode = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: false),
+                    ChannelId = table.Column<int>(type: "int", nullable: false),
+                    Ownership = table.Column<byte>(type: "tinyint", nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: true),
+                    IsServiceBakingRecipe = table.Column<bool>(type: "bit", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+
+            ...
+###
+There should be only one initial edition on the Recipe project. Newly entity changes need a new edition. Create an update (feature) edition with a well edition name which is clear for your change .
+Code Example:
+###
+dotnet cook editions add ChangingCustomerAddressModels
+###
+Whenever you merge your code to the relevant repo, pipeline runs dotnet cook cookbook update command and this command updates related environment Cookbook.
+***
+- How to Create New Cookbook and New Editions / Be Careful -
+  * Do not change edition files in code. These files should be created by cook commands. You can only add Seed Data Management sql commands to the end of edition methods (check next topic: Seed Data Management).
+  * Initial Edition file should be created by only one person in the development team.
+  * Changing an entity (a table) by different developers at the same time and creating related update (feature) editions for that entity can cause errors when edition update. So the team should always be in communication.
+  * Snapshot should not be deleted, this file is needed for edition creation.
+  * Do not delete edition files. However, if your edition file count is very high and if you want to re-initialize edition , then you can delete all edition files and recreate initial edition again. And in this case, you should check your seed sql files if they are proper or not for new initial edition. But if some your edition is not executed in production environment, deleting and re-creating edition files should be done carefully.
+  * For edition execution performance check this article .
+***
+- How to Create New Cookbook and New Editions / Seed Data Management -
+  * Add your Initial Seed Data into Editions/Seed/InitialSeed.sql file. Do not put begin tran and commit tran blocks inside these sqls.
+  * Add this '.sql' to the end of protected override void Up(EditionBuilder editionBuilder) method in date_InitialCreate.cs edition file (or date_InitialEdition.cs).
+  * When you want to add new definitions or seed data related to your change , add another UpdateSeed.sql file and again add this .sql to the end of protected override void Up(EditionBuilder editionBuilder) method in update (feature) edition file (sample: date_UpdateEditionForIngredientTypes.cs).
+  * If you need to separate edition data for test environment you can add test data to Editions/Seed/InitialSeedTestExtended.sql file.
+  * Add this .sql to the end of protected override void Up(EditionBuilder editionBuilder) method in date_InitialCreate.cs edition file.
+  * Up(EditionBuilder editionBuilder) Method Override Code Block :
+  * Add ItemGroup to project .sln for copy .sql files to output directory.
+  * Project .sln ItemGroup Code Block :
+Code Example:
+###
+editionBuilder.Sql(System.IO.File.ReadAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "Editions/Seed/InitialSeed.sql")));
+var currentEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+if (currentEnvironment != "Production")
+{
+     editionBuilder.Sql(System.IO.File.ReadAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "Editions/Seed/InitialSeedTestExtended.sql")));
+}
+###
+Code Example:
+###
+<ItemGroup>
+    <None Include="Editions\Seed\InitialSeed.sql" Condition="'$(ExcludeConfigFilesFromBuildOutput)'!='true'">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Include="Editions\Seed\InitialSeedTestExtended.sql" Condition="'$(ExcludeConfigFilesFromBuildOutput)'!='true'">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+###
+***
+- How to Create New Cookbook and New Editions / Quick Seed Data Script Generation -
+As explained above, for moving new definitions from Development Environment to Production Environment , we are using seed sql files . To generate seed sql scripts easily for a table or for new records, you can use sp_generate_table_seed and sp_generate_detailtable_seed stored procedures in your development db. This SPs exist in development environment only.
+Code Example:
+###
+exec [dbo].[sp_generate_table_seed] 'SlipDefinition', 'Id', 'Code'
+
+exec [dbo].[sp_generate_detailtable_seed] 'SlipDefinitionDetail', 'Id', 'SlipDefinitionId', 'Order', 'SlipDefinition', 'Id', 'Code'
+###
+By using sp_generate_table_seed proc, you generate a script like below for a table :
+Code Example:
+###
+IF NOT EXISTS (SELECT * FROM dbo.SlipDefinition WHERE Code='CashDeposit')
+BEGIN
+	INSERT INTO dbo.SlipDefinition([Code],[CreatedBy],[CreateTime],[Description],[IsGenerateSerialNumber],[IsLatestVersion],[LanguageId],[Name],[UpdateCount],[UpdatedBy],[UpdateTime],[Version])
+	VALUES (N'CashDeposit', N'system', GETDATE(), N'Cash Deposit Slip', 0, 1, 41, N'CashDeposit', 0, NULL, NULL, 1)
+END
+ELSE
+BEGIN
+	UPDATE dbo.SlipDefinition SET [Code] = N'CashDeposit', [Description] = N'Cash Deposit Slip', [IsGenerateSerialNumber] = 0, [IsLatestVersion] = 1, [LanguageId] = 41, [Name] = N'CashDeposit', [UpdateCount] = UpdateCount + 1, [UpdatedBy] = 'system', [UpdateTime] = GETDATE(), [Version] = 1
+	WHERE Code='CashDeposit'
+END
+###
+If you are generating records of a detail table , you must use sp_generate_detailtable_seed and this proc generates a script like below:
+Code Example:
+###
+-- ********** Code(CashDeposit). Deleting all old details in the table and inserting new ones for this record. **********
+
+DELETE dbo.SlipDefinitionDetail
+FROM dbo.SlipDefinitionDetail d
+INNER JOIN dbo.SlipDefinition m ON m.Id=d.SlipDefinitionId
+WHERE m.Code='CashDeposit'
+
+DECLARE @masterTableIdValueForCashDeposit INT
+SELECT @masterTableIdValueForCashDeposit=Id FROM dbo.SlipDefinition WHERE Code='CashDeposit'
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'Title', N'system', GETDATE(), N'Title', 1, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'Cash Deposit')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'LeftHeader', N'system', GETDATE(), N'Customer Number', 2, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'#c.Cus.Id')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'LeftHeader', N'system', GETDATE(), N'Account Number', 3, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'#c.C.AccountNumber')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'LeftHeader', N'system', GETDATE(), N'Transaction Date', 4, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'#m.Today')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'LeftHeader', N'system', GETDATE(), N'Identity Number', 5, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'#c.Cus.CustomerIdentifications[0].IdentityNumber')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'LeftHeader', N'system', GETDATE(), N'Issue Date', 6, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'#m.Today')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'LeftHeader', N'system', GETDATE(), N'Reference', 7, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'#m.BusinessKey')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'RightHeader', N'system', GETDATE(), N'Dear', 8, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'#c.Cus.Name')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'RightHeader', N'system', GETDATE(), N'Address', 9, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'Istanbul')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'LeftBody', N'system', GETDATE(), N'Sender Name', 10, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'#c.Cus.Name')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'LeftBody', N'system', GETDATE(), N'Location', 11, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'Mobile Branch')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'LeftBody', N'system', GETDATE(), N'Comment', 12, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'#c.C.Comment')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'BottomFooter', N'system', GETDATE(), N'Amount', 13, @masterTableIdValueForCashDeposit, N'Amount', 0, NULL, NULL, N'#c.C.Amount')
+
+INSERT INTO dbo.SlipDefinitionDetail([Area],[CreatedBy],[CreateTime],[Label],[Order],[SlipDefinitionId],[Tags],[UpdateCount],[UpdatedBy],[UpdateTime],[Value])
+VALUES (N'BottomFooter', N'system', GETDATE(), N'Currency', 14, @masterTableIdValueForCashDeposit, NULL, 0, NULL, NULL, N'#c.C.CurrencyCode')
+###
+For more information: https://www.cookbooktutorial.net/efcore/entity-framework-core-edition.aspx

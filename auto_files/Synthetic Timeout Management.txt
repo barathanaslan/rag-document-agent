@@ -1,0 +1,59 @@
+- Baking Time Management -
+Default Example Kitchen Suite (Client) request baking time value is 100 seconds . That means, any request is sent by Kitchen Suite has 100 seconds baking time value.
+When the request is in Example Kitchen API backend , then the baking time is managed by the backend framework . Framework checks the request type (mix, bake or decorate) and decides how long baking time value should be and sets Oven Timer value in EF Core layer . In Example Oven default baking time value is 30 seconds. That means when your code goes to Oven to execute an baking script, that script have 30 seconds to finish.
+***
+- Baking Time Management / Oven Timer Types -
+Oven Timer is maximum number of seconds which is consumed while executing a command, and if the time is consumed before execution completed, operation is cancelled and an error is generated. There are 3 different types to manage oven timer. These type options can be configured from environment variables in appsettings.json.
+Default values are like below:
+Code Example:
+###
+"EntityFramework": {
+    "BakingTime" : {
+      "MixTime": 30,
+      "BakeTime": 30,
+      "DecorateTime" : 120
+    }
+  }
+###
+MixTime is only used for MixBase executions . Default value is 30 seconds. If you need to change this value, you can change it from environment variables for the requested application (service).
+Code Example:
+###
+"EntityFramework": {
+    "BakingTime" : {
+      "MixTime": 45
+    }
+  }
+###
+BakeTime is only used for BakeBase executions . Default value is 30 seconds. If you need change this value, you can change it from environment variables for the requested application (service)
+Code Example:
+###
+"EntityFramework": {
+    "BakingTime" : {
+      "BakeTime": 75
+    }
+  }
+###
+DecorateTime is only used for BakeBase executions . Default value is 120 seconds. If you need change this value, you can change it from environment variables for the requested application (service)
+Code Example:
+###
+"EntityFramework": {
+    "BakingTime" : {
+      "DecorateTime": 180
+    }
+  }
+###
+Code Example:
+###
+api/v2/Catalog/Playgrounds/12?querytype=decorate
+###
+***
+- Baking Time Management / Cancellation Token -
+In your commands and queries, you get CancellationToken , and you can pass this value to SaveChangesAsync(cancellationToken) , but this is not required. Framework get this via MessageContext .
+Framework checks the baking time as sample below. In this sample, cancellationToken is passed to Microsoft.EntityFrameworkCore.DbContext to check baking time.
+If you need to check baking time in a time, then you can check the cancellationToken and throw an TimeoutException as below.
+Code Example:
+###
+if (cancellationToken.IsCancellationRequested)
+     throw new TimeoutException(localizer[BaseErrorCodes.TheOperationOrTaskHasTimedOut]);
+###
+

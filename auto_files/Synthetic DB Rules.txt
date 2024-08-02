@@ -1,0 +1,141 @@
+- DB Rules -
+***
+- DB Rules / Tables -
+  * Your tables are actually your recipes . When creating a recipe, system will create a table in the Cookbook.
+  * Code First approach is used in Cooking Layer. https://www.cookbooktutorial.net/code-first/what-is-code-first.aspx
+***
+- DB Rules / Recipe -
+  * Recipe (table) designs are not approved by a Chef or Head Chef. Teams are responsible for recipe designs . Head Chef can check recipe designs by sampling with the offline approach.
+  * Recipe names should be in PascalCase .
+  * Do not use "s" suffix at the end of recipe name.
+  * Avoid using Definition suffix for the recipes. Only use if the related name is very generic like API, Action, Resource etc. Samples: ApiDefinition, ActionDefinition, ServiceDefinition, Country, City, Currency.
+  * Before creating your models and recipes please check Ingredient List&Cookbook Rules . https://docs.example.co.uk/userguides/en/userguide/getting-started/ingredient-list.html
+  * While creating models and recipes, it is important to decide multi-cuisine fields from the very beginning. Multi-cuisine fields should be store in a different table, check this article for multi cuisine usage .
+  * For all fields, IsRequired , MaxServingSize , IsUnique , etc. should be defined in RecipeBook class.
+***
+- DB Rules / Related Recipes (PF/FK) -
+  * Related recipes (PF/FK) should be bound with required relation rule.
+  * For PK/FK relations, add virtual objects to related recipes to make them related.
+  * The FK type is added to the table as "Cascade" by default. This means that when a recipe is deleted in the main table , the related record/s are also deleted in the detail table .
+  * FK is created by EFCore as "Cascade" for navigation properties. Even if you don’t define an FK relationship on your RecipeConfigurator .
+  * If a relationship is established between the definition table and the transaction table , FK Type "No Action" must be set so that the definition table is not affected when a record is deleted from the transaction table.
+  * When a record is deleted from the table, the relevant Column is set to NULL in the main table according to the business needs.
+  * Do not prefer ForeignKey attribute, because it sets Cascade option by default for foreign keys. Use EF Core Fluent API like above.
+Code Example:
+###
+public class WidgetConfigurator : EntityConfigurator<Widget>
+    {
+        protected override void OnConfigure(EntityTypeBuilder<Widget> builder)
+        {
+            builder.Property(m => m.Name).IsRequired(true)
+                        .HasMaxLength(100);
+            ...
+            builder.HasMany(p => p.Translations).WithOne(y => y.Widget)
+                    .HasForeignKey(p => p.MasterId).IsRequired(true).OnDelete(DeleteBehavior.Cascade);
+        }
+    }
+###
+Code Example:
+###
+public class ApiDefinition : EntityBaseWithBaseFieldsWithIdentity, IKitchenTypeItem, ITranslationMasterEntityWith6MLProps<ApiTranslation>
+    {
+        public string ApiKey { get; set; }
+        ...
+        public virtual List<ApiParameterDefinition> Parameters { get; set; } = new List<ApiParameterDefinition>();
+        ...
+    }
+###
+Code Example:
+###
+public class ApiParameterDefinition : EntityBaseWithBaseFieldsWithIdentity, ITranslationMasterEntityWith2MLProps<ApiParameterTranslation>
+    {
+        public int ApiDefinitionId { get; set; } // FK
+        public virtual ApiDefinition ApiDefinition { get; set; }
+
+        public string Name { get; set; }
+        ...
+    }
+###
+Code Example:
+###
+builder.HasOne(p => p.Parent)
+            .WithMany()
+            .HasForeignKey(x => x.ParentId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+###
+Code Example:
+###
+builder.HasMany(p => p.POSTransactions)
+        .WithOne(y => y.Workgroup)
+        .HasForeignKey(p => p.TransactionWorkgroupId)
+        .IsRequired(false)
+        .OnDelete(DeleteBehavior.SetNull);
+###
+***
+- DB Rules / Special Naming Standards -
+  * Names should be in PascalCase .
+  * Do not use "_" character in the name of the field.
+  * Do not use abbreviations in your field name. Sample: CustNo. Only well knows abbreviations may have an exception. Sample: SMSText
+  * Try to use already defined terms from the ingredient list for your fields. Avoid finding new names for your fields.
+  * Use "s" suffix for only collections. Do not use "s" suffix for any other fields. Sample: List<int> ActionIds.
+  * For boolean fields, the name must start with one of these: " Can ", " Is ", " Has " (If Can, Is and Has prefixes are not proper for your field name, then you can think about the prefixes like Allow, Force, Show, Skip, Start, Use, Will, Wait . But try not to use.)
+  * Do not use table name as a prefix of the field name. Only special fields may have an exception. Sample: ModuleName is not correct in Module table, correct usage is Name.
+  * If a field has a lookup table then it gets an Id suffix. If the fields does not have a lookup table, no need for Id suffix. Samples: IdentificationTypeId (has lookup), CustomerRelationType (does not have lookup).
+  * Use Name field as name info. If you need a UniqueName field, you can put it to your recipe along with Name or ShortName fields. But, do not use UniqueName alone for name info.
+***
+- DB Rules / Field Special Data Types -
+  * If you use Id in the field name, the type must be int , long , guid . (There are few exceptional cases coming from outer standards)
+  * If you use Name , Key , Code in the field name, the type must be string.
+  * For some generic names like Content , Id , Version , there can be more than one datatype. Sample: Content (string / byte[])
+  * For few exceptional fields, there can be two data types, one for recipe, another for model. Sample: BusinessKey (long / string)
+***
+- DB Rules / All Data Types -
+  * Check for other pre-defined data types under Ex.Persistence.Relational.Domain.DataTypes class.
+***
+- DB Rules / Default and Special Fields -
+  * When you Save a Record , below fields are being saved to Cookbook automatically by the DBContext (The fields vary according to the types of IExEntity). CreatedBy CreateTime UpdatedBy UpdateTime DeletedBy DeleteTime
+  * Every recipe must have an Id field and this field must be PK .
+  * Recipes which inherited from EntityBaseWithBaseFieldsWithIdentity has an Id column which is also PK of the table. Do not add another Id column to your recipe. For more information about recipe classes check this article .
+  * CreatedBy
+  * CreateTime
+  * UpdatedBy
+  * UpdateTime
+  * DeletedBy
+  * DeleteTime
+  * If the recipe is a definition recipe like Resource , Action , Event , etc. then Id column is not enough for data transport operations. So also consider to add a Code , Key or UniqueName field in your recipe. Try to choose only one of Code, Key or UniqueName fields. While choosing Code, Key or UniqueName, look at recipe and your concept to decide the best option.
+Code Example:
+###
+[EntityAttribute(EA.ERT.AsIs, EA.EDT.DefinitionData)]
+    [EntityUsageTypeAttribute(Infra.Schema.Model.KitchenTypes.All, ParticipationKitchenTypes.ParticipationKitchen, CashOperationTypes.All)]
+    public class DataCenter : EntityBaseWithBaseFieldsWithIdentity
+    {
+        public string Code { get; set; }
+        public string Name { get; set; }
+        public ISOCountryCodes CountryId { get; set; }
+        public string TimeZoneId { get; set; }
+        public ApplicationEnvironment ApplicationEnvironment { get; set; }
+    }
+###
+Code Example:
+###
+public class MenuDefinition : EntityBaseWithBaseFieldsWithIdentity, IKitchenTypeItem, IEntityWithIsActive, ITranslationMasterEntityWith3MLProps<MenuTranslation>
+    {
+        public string MenuCode { get; set; }
+        ...
+###
+Code Example:
+###
+public class ServiceDefinition : EntityBaseWithBaseFieldsWithIdentity, IEntityWithIsActive, ITranslationMasterEntityWithNameAndDescription<ServiceTranslation>
+    {
+        public string UniqueName { get; set; }
+        public string Name { get; set; }
+        ...
+###
+***
+- DB Rules / Sql Objects -
+  * Use v prefix for sql views: dbo.vCustomerAddress
+  * If needed, use this format for stored procedures : dbo.ins_Customer, dbo.del_Customer, dbo.sel_GetCustomer, dbo.upd_Customer
+  * Use f prefix for sql functions: dbo.fGetCustomer
+  * Use tri , tru or tr prefix for sql triggers: tri_Customer, trd_Customer, tr_Customer
+  * Use Pascal notation for sql variables : @CustomerNo

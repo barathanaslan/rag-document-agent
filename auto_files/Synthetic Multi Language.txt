@@ -1,0 +1,368 @@
+- Multi Cuisine -
+***
+- Multi Cuisine / Frontend -
+  * Multicuisineinput is used in frontend for gathering multi-cuisine data.
+  * Multicuisineinput gives multi-cuisine fields as cuisine pair array , and this data should be placed in the relevant http request.
+Code Example:
+###
+"NameCU": [
+        {
+            "CuisineCode": "ita",
+            "Value": "testt123"
+        },
+        {
+            "CuisineCode": "fre",
+            "Value": "testt123"
+        },
+        {
+            "CuisineCode": "chi",
+            "Value": "testt123"
+        }
+    ],
+###
+***
+- Multi Cuisine / DB Level -
+  * At db level, we store translations in a different table from the main table. For example, lets say we have RecipeDefinition table. In RecipeDefinition table we have 2 columns, Name and Description that needs to be multi-cuisine.
+  * In our sample, the translation are stored in RecipeTranslation translation table. Translation tables needs to start with main table name and end with Translation suffix (If your table has Definition suffix, you can drop Definition suffix to shorten translation table name). In the translation table, we need to add Id , foreignkey (Id) , CuisineCode , Name and Description columns.
+***
+- Multi Cuisine / Backend -
+  * To achieve the structure above, the recipes and the related interfaces with the recipes should be like this:
+  * At our endpoint level; InputModel should get multi-cuisine lists as inputs. List names should end with an CU letter (NameCU, DescriptionCU, …​). OutputModel should store both fields and translation lists. List names should end with an CU word.
+  * InputModel should get multi-cuisine lists as inputs. List names should end with an CU letter (NameCU, DescriptionCU, …​).
+  * OutputModel should store both fields and translation lists. List names should end with an CU word.
+  * As we mentioned we need to store tenant default cuisine values for DbPerTenant services, and fre values for Tenantless services. To achieve this, we need to use proper mapper methods and proper parameters. For Tenantless services, send ISOCuisineCodes.fre.Code as CuisineCode parameter and for DbPerTenant services, send sessionDI.Tenant().Cuisine.ISOCode as CuisineCode parameter.
+  * As we mentioned, if you have a multi-cuisine data in your output model, you should add both field and fieldCU in your outputmodel . CU fields should be returned only when cu query parameter’s value is all and when querying a single record . Sample table is like below:
+  * For getting a single record , you should use proper mapper method to fill CU lists for the outputmodel :
+  * For listing methods:
+Code Example:
+###
+public class RecipeDefinition : EntityBaseWithBaseFieldsWithIdentity, ITranslationMasterEntityWithNameAndDescription<RecipeTranslation>
+    {
+        ...
+        [Multicuisinal]
+        public string Name { get; set; }
+        ...
+        [Multicuisinal]
+        public string Description { get; set; }
+        ...
+        public virtual List<RecipeTranslation> Translations { get; set; }
+    }
+
+    public class RecipeDefinitionConfigurator : EntityConfigurator<RecipeDefinition>
+    {
+        protected override void OnConfigure(EntityTypeBuilder<RecipeDefinition> builder)
+        {
+            ...
+            builder.HasMany(p => p.Translations).WithOne(y => y.RecipeDefinition)
+                .HasForeignKey(p => p.MasterId).IsRequired(true).OnDelete(DeleteBehavior.Cascade);
+        }
+    }
+###
+Code Example:
+###
+public class RecipeTranslation : EntityBase, ITranslationDetailEntityWithNameAndDescription
+    {
+        public int Id { get; set; } // PK
+
+        public int MasterId { get; set; } // FK
+        public virtual RecipeDefinition RecipeDefinition { get; set; }
+
+        public string CuisineCode { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+    }
+
+    public class RecipeTranslationConfigurator : EntityConfigurator<RecipeTranslation>
+    {
+        protected override void OnConfigure(EntityTypeBuilder<RecipeTranslation> builder)
+        {
+            builder.HasKey(m => m.Id);
+            builder.Property(m => m.Id).ValueGeneratedOnAdd();
+
+            builder.Property(m => m.MasterId).IsRequired(true);
+
+            builder.Property(m => m.CuisineCode).IsRequired(true);
+            builder.Property(m => m.CuisineCode).HasMaxLength(3);
+
+            builder.Property(m => m.Name).IsRequired(true);
+            builder.Property(m => m.Name).HasMaxLength(100);
+
+            builder.Property(m => m.Description).IsRequired(true);
+            builder.Property(m => m.Description).HasMaxLength(250);
+
+            builder.HasIndex(x => new { x.MasterId, x.CuisineCode }).IsUnique();
+        }
+    }
+###
+Code Example:
+###
+public class FieldDefinition : EntityBaseWithBaseFieldsWithIdentity, ITranslationMasterEntityWith2CUProps<FieldTranslation>
+    {
+        ...
+        public string DisplayName { get; set; }
+        [Multicuisinal]
+        public string Description { get; set; }
+
+        ...
+        [NotMapped]
+        public string Prop1 { get { return DisplayName; } set { DisplayName = value; } }
+        [NotMapped]
+        public string Prop2 { get { return Description; } set { Description = value; } }
+    }
+
+    public class FieldTranslation : EntityBase, ITranslationDetailEntityWith2CUProps
+    {
+        public int Id { get; set; } // PK
+
+        public int FieldDefinitionId { get; set; } // FK
+        public virtual FieldDefinition FieldDefinition { get; set; }
+
+        public string CuisineCode { get; set; }
+        public string Description { get; set; }
+        public string DisplayName { get; set; }
+
+        [NotMapped]
+        public string Prop1 { get { return Description; } set { Description = value; } }
+        [NotMapped]
+        public string Prop2 { get { return DisplayName; } set { DisplayName = value; } }
+        [NotMapped]
+        public int MasterId { get { return FieldDefinitionId; } set { FieldDefinitionId = value; } }
+    }
+###
+The interfaces you can use for master entity are like below:
+Code Example:
+###
+public interface ITranslationMasterEntityWithDescription<TDetail> : ITranslationMasterEntity<TDetail>
+    public interface ITranslationMasterEntityWithName<TDetail> : ITranslationMasterEntity<TDetail>
+    public interface ITranslationMasterEntityWithNameAndDescription<TDetail> : ITranslationMasterEntity<TDetail>
+    public interface ITranslationMasterEntityWith1CUProp<TDetail> : ITranslationMasterEntity<TDetail>
+    public interface ITranslationMasterEntityWith2CUProps<TDetail> : ITranslationMasterEntity<TDetail>
+    public interface ITranslationMasterEntityWith3CUProps<TDetail> : ITranslationMasterEntity<TDetail>
+    public interface ITranslationMasterEntityWith4CUProps<TDetail> : ITranslationMasterEntity<TDetail>
+    public interface ITranslationMasterEntityWith6CUProps<TDetail> : ITranslationMasterEntity<TDetail>
+###
+The interfaces you can use for translation table entity are like below:
+Code Example:
+###
+public interface ITranslationDetailEntityWithName : ITranslationDetailEntity
+    public interface ITranslationDetailEntityWithDescription : ITranslationDetailEntity
+    public interface ITranslationDetailEntityWithNameAndDescription : ITranslationDetailEntity
+    public interface ITranslationDetailEntityWith1CUProp : ITranslationDetailEntity
+    public interface ITranslationDetailEntityWith2CUProps : ITranslationDetailEntity
+    public interface ITranslationDetailEntityWith3CUProps : ITranslationDetailEntity
+    public interface ITranslationDetailEntityWith4CUProps : ITranslationDetailEntity
+    public interface ITranslationDetailEntityWith6CUProps : ITranslationDetailEntity
+###
+Code Example:
+###
+...
+    public record RecipeDefinitionInputModel : InputModelBase, ITranslationInputModelWithNameCUAndDescriptionCU
+    {
+        ...
+        public List<CuisinePair> NameCU { get; set; } // Ex.MetaData.Api
+        ...
+        public List<CuisinePair> DescriptionCU { get; set; }
+        ...
+    }
+
+    public record RecipeDefinitionOutputModel : OutputModelBase, ITranslationOutputModelWithNameAndDescription
+    {
+        ...
+        public string Name { get; set; } // Ex.MetaData.Api
+        public List<CuisinePair> NameCU { get; set; }
+        ...
+        public string Description { get; set; }
+        public List<CuisinePair> DescriptionCU { get; set; }
+        ...
+    }
+    ...
+###
+Code Example:
+###
+public record FieldDefinitionOutputModel : OutputModelBase, ITranslationOutputModelWith2CUProps
+    {
+        ...
+        public string DisplayName { get; set; }
+        public List<CuisinePair> DisplayNameCU { get; set; }
+        public string Description { get; set; }
+        public List<CuisinePair> DescriptionCU { get; set; }
+        ...
+
+        [JsonIgnore]
+        public string Prop1 { get { return DisplayName; } set { DisplayName = value; } }
+        [JsonIgnore]
+        public List<CuisinePair> Prop1CU { get { return DisplayNameCU; } set { DisplayNameCU = value; } }
+        [JsonIgnore]
+        public string Prop2 { get { return Description; } set { Description = value; } }
+        [JsonIgnore]
+        public List<CuisinePair> Prop2CU { get { return DescriptionCU; } set { DescriptionCU = value; } }
+    }
+###
+Code Example:
+###
+public async Task<RecipeDefinitionOutputModel> Handle(CreateRecipeDefinitionCommand request, CancellationToken cancellationToken)
+    {
+        sessionDI.ExecutionTrace.InitTrace();
+
+        var recipeDefinition = mapper.MapToNewEntityForNameAndDescriptionTranslation<RecipeDefinitionInputModel, RecipeDefinition, RecipeTranslation>(ISOCuisineCodes.fre.Code, request.Model);
+
+        await dbContext.AddAsync(recipeDefinition);
+        await dbContext.SaveChangesAsync();
+
+        return mapper.MapToModelForNameAndDescriptionTranslation<RecipeDefinitionOutputModel, RecipeDefinition, RecipeTranslation>(sessionDI, recipeDefinition);
+    }
+###
+Code Example:
+###
+public async Task<RecipeDefinitionOutputModel> Handle(UpdateRecipeDefinitionCommand request, CancellationToken cancellationToken)
+    {
+        sessionDI.ExecutionTrace.InitTrace();
+
+        request.Model.Id = request.Id;
+
+        var fromDb = await dbContext.Set<RecipeDefinition>()
+                                    .Include(x => x.Translations)
+                                    .FirstOrDefaultAsync(x => x.Id == request.Model.Id, cancellationToken);
+        if (fromDb == null)
+            throw exceptionFactory.BadRequestEx(BaseErrorCodes.ItemDoNotExists, "RecipeDefinition", request.Model.Id);
+
+        fromDb.Translations = TranslationHelper.GetTranslationsForNameAndDescription<RecipeTranslation>(request.Model, fromDb.Id);
+        var mapped = mapper.MapToEntityForNameAndDescriptionTranslation<RecipeDefinitionInputModel, RecipeDefinition, RecipeTranslation>(ISOCuisineCodes.fre.Code, request.Model);
+
+        await dbContext.UpdatePartial(fromDb, mapped);
+        await dbContext.SaveChangesAsync();
+
+        return mapper.MapToModelForNameAndDescriptionTranslation<RecipeDefinitionOutputModel, RecipeDefinition, RecipeTranslation>(sessionDI, fromDb);
+    }
+###
+Mapper methods you can use for new entity mappings are like below:
+Code Example:
+###
+public static TEntity MapToNewEntityForNameTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToNewEntityForDescriptionTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToNewEntityForNameAndDescriptionTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToNewEntityFor1CUPropTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToNewEntityFor2CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToNewEntityFor3CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToNewEntityFor4CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToNewEntityFor6CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+###
+Mapper methods you can use for update entity mappings are like below:
+Code Example:
+###
+public static TEntity MapToEntityForNameTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToEntityForDescriptionTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToEntityForNameAndDescriptionTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToEntityFor1CUPropTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToEntityFor2CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToEntityFor3CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToEntityFor4CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+    public static TEntity MapToEntityFor6CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, string tenantCuisineCode, TModel model)
+###
+Code Example:
+###
+public async Task<RecipeDefinitionOutputModel> Handle(GetRecipeDefinitionByKeyQuery request, CancellationToken cancellationToken)
+    {
+        sessionDI.ExecutionTrace.InitTrace();
+
+        var fromDb = await dbContext.Set<RecipeDefinition>()
+                                    .Include(x => x.Translations)
+                                    .WhereIsActive(sessionDI.MessageContext)
+                                    .FirstOrDefaultAsNoTrackingAsync(x => x.Id == request.Id, cancellationToken);
+        if (fromDb == null)
+            throw exceptionFactory.BadRequestEx(ErrorCodes.ItemDoNotExists, "RecipeDefinition", request.Id);
+
+        return mapper.MapToModelForNameAndDescriptionTranslation<RecipeDefinitionOutputModel, RecipeDefinition, RecipeTranslation>(sessionDI, fromDb);
+    }
+###
+Code Example:
+###
+public async Task<List<RecipeDefinitionOutputModel>> Handle(GetRecipeDefinitionByTenantPersistenceStrategyQuery request, CancellationToken cancellationToken)
+    {
+        sessionDI.ExecutionTrace.InitTrace();
+
+        var list = await dbContext.Set<RecipeDefinition>()
+                                    .Include(x => x.Translations.Where(at => at.CuisineCode == sessionDI.Cuisine().ISOCode))
+                                    .Include(x => x.ModuleDefinition)
+                                    .Where(x => (x.CountryId == null || x.CountryId == sessionDI.Tenant().Country.Id) &&
+                                            x.TenantPersistenceStrategy == request.TenantPersistenceStrategy)
+                                    .WhereIsActive(sessionDI.MessageContext)
+                                    .ToListAsNoTrackingAsync(sessionDI.MessageContext);
+
+        return mapper.MapToModelListForNameAndDescriptionTranslation<RecipeDefinitionOutputModel, RecipeDefinition, RecipeTranslation>(sessionDI, list)
+                        .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
+###
+Mapper methods you can use for single record mappings are like below:
+Code Example:
+###
+public static TModel MapToModelForNameTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, TEntity entity)
+    public static TModel MapToModelForDescriptionTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, TEntity entity)
+    public static TModel MapToModelForNameAndDescriptionTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, TEntity entity, bool checkForStaticLabels = false)
+    public static TModel MapToModelFor1CUPropTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, TEntity entity)
+    public static TModel MapToModelFor2CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, TEntity entity)
+    public static TModel MapToModelFor3CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, TEntity entity, bool checkForStaticLabels = false)
+    public static TModel MapToModelFor4CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, TEntity entity)
+    public static TModel MapToModelFor6CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, TEntity entity)
+###
+Mapper methods you can use for list mappings are like below:
+Code Example:
+###
+public static List<TModel> MapToModelListForNameTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, List<TEntity> entityList, bool checkForStaticLabels = false)
+    public static List<TModel> MapToModelListForDescriptionTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, List<TEntity> entityList)
+    public static List<TModel> MapToModelListForNameAndDescriptionTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, List<TEntity> entityList, bool checkForStaticLabels = false)
+    public static List<TModel> MapToModelListFor1CUPropTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, List<TEntity> entityList, bool checkForStaticLabels = false)
+    public static List<TModel> MapToModelListFor2CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, List<TEntity> entityList, bool checkForStaticLabels = false)
+    public static List<TModel> MapToModelListFor3CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, List<TEntity> entityList, bool checkForStaticLabels = false)
+    public static List<TModel> MapToModelListFor4CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, List<TEntity> entityList)
+    public static List<TModel> MapToModelListFor6CUPropsTranslation<TModel, TEntity, TTranslationEntity>(this IMapper mapper, ISessionContextDI sessionContextDI, List<TEntity> entityList, bool checkForStaticLabels = false)
+###
+***
+- Multi Cuisine / Samples -
+localhost:10014/api/v2/MetaData/Channels/1?cu=all
+localhost:10014/api/v2/MetaData/Channels/1?cu=fre
+localhost:10014/api/v2/MetaData/Channels?cu=fre
+Code Example:
+###
+public async Task<List<EntityDefinitionOutputModel>> Handle(GetEntityDefinitionByFieldName request, CancellationToken cancellationToken)
+    {
+        ...
+
+            return ExtraPropsMapper.MapEntityDefinition(mapper.MapToModelListFor2CUPropsTranslation<EntityDefinitionOutputModel, EntityDefinition, EntityTranslation>(sessionDI, list), list, sessionDI);
+        ...
+    }
+###
+Code Example:
+###
+namespace Ex.Catalog.Api.Impl
+{
+    public class ExtraPropsMapper
+    {
+        ...
+
+        internal static List<EntityDefinitionOutputModel> MapEntityDefinition(List<EntityDefinitionOutputModel> targetList, List<EntityDefinition> sourceList, ISessionContextDI sessionDI)
+        {
+            if (targetList.Safe().Any() && sourceList.Safe().Any())
+            {
+                foreach (var item in targetList)
+                {
+                    var sourceItem = sourceList.Find(x => x.Id == item.Id);
+                    item.ServiceName = sourceItem?.ServiceDefinition?.Translations?.FirstOrDefault(x => x.CuisineCode == sessionDI.Cuisine().ISOCode)?.Name;
+                }
+            }
+
+            return targetList;
+        }
+###
+Code Example:
+###
+var returnValue = ExtraPropsMapper.MapWebUI(mapper.MapToModelForNameAndDescriptionTranslation<WebUIOutputModel, WebUI, WebUITranslation>(sessionDI, fromDb, true), fromDb, sessionDI);
+
+    if (returnValue != null && returnValue.UIObjects.Safe().Any())
+    {
+        returnValue.UIObjects = mapper.MapToModelListForNameTranslation<WebUIObjectOutputModel, WebUIObject, WebUIObjectTranslation>(sessionDI, fromDb.UIObjects, true);
+
+        ...
+    }
+###
+

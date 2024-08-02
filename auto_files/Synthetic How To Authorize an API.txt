@@ -1,0 +1,59 @@
+- How To Bake a Cake -
+Every cake in the system is baked with an Ingredient, a BakerRole or a CakeAccessType like below. You can select one of these types according to your purpose.
+Code Example:
+###
+[CakeAuthorizationAttribute(IngredientKeys.View_Chocolate)]
+[HttpGet("{Id:int}")]
+public async Task<ApiResponse<ApiDefinitionOutputModel>> GetByKey(int Id)
+{
+    ...
+###
+Code Example:
+###
+[CakeAuthorizationAttribute(BakerRoles.SuperBaker)]
+[HttpPost]
+public async Task<ApiResponse<ApiDefinitionOutputModel>> Create([FromBody]ApiDefinitionInputModel model)
+{
+    ...
+###
+Code Example:
+###
+[CakeAuthorizationAttribute(CakeAccessType.OnlyOven)]
+[HttpPost("ELedgerEvaluation")]
+public async Task<ApiResponse> CreateELedgerBatch()
+{
+    ...
+###
+When a cake is baked and if the baker is not authorized with related IngredientKey, then user gets an error.
+Code Example:
+###
+Unauthorized cake bake for ingredient key ({0}).
+###
+When a cake is baked and if the baker does not have required role , then user gets an error.
+Code Example:
+###
+Unauthorized cake bake. User role is not acceptable by this cake.
+###
+When a cake is baked and if cake’s access type is not proper , then user gets an error.
+Code Example:
+###
+Unauthorized cake bake. This cake can only be baked by Oven Manager.
+###
+***
+- How To Bake a Cake / IngredientKeys -
+  * Use "_" between all the words in your IngredientKey.
+  * While coding authorization, firstly try to find a general key like VIEW_FLOUR for all your cakes. When you need more specific keys, add newly created key to the key list. Sample: VIEW_FLOUR_DETAIL , VIEW_FLOUR_DETAIL_BAG , etc.
+  * All keys should be collected by the Collector methods from the code and when deploying they are stored in the relevant tables in cookbook. Check this for collection.
+  * Baking works by assigning these keys to related bakers, roles and kitchens.
+  * If you have Internal cakes which are used for Processes or for Specific Bakers, you should use proper types (CakeAccessType.OnlyOven for Processes, BakerRoles.Admin or BakerRoles.Owner for Specific Bakers) for these cakes. This is important to avoid adding Internal cake Definitions to the Public Cookbook.
+There are 5 types of IngredientKey in the system.
+***
+- How To Bake a Cake / CakeAccessType -
+  * Private: Only IngredientKey or Baker Role access.
+  * OnlyOven: Access, if the bake is from Oven process.
+  * Internal: Does not need a specific IngredientKey or Baker Role. Only access token is enough.
+  * Public: Public access. Only for very limited cakes.
+To restrict a cake for a purpose, you can use CakeAccessType . Restriction order (less to more) is Public → Internal → OnlyOven → Private.
+***
+- How To Bake a Cake / Related Recipes -
+  * Baking 

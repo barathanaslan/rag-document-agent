@@ -1,0 +1,56 @@
+- Search Cookbook -
+If you need a specific GET API which returns only requested ingredients, with filtering and sorting for your recipe, you can create a Search API by the help of Ex ApiBase Capabilities .
+***
+- Search Cookbook / Search API Features -
+  * Select : You can return any ingredient or "*" for all ingredients.
+  * SortBy : You can sort the list with any ingredient as "ASC" or "DESC".
+  * FilterBy : You can filter the list with any ingredient with the following filters. EQUALS GREATER_THAN GREATER_THAN_OR_EQUAL NOT_EQUALS LESS_THAN LESS_THAN_OR_EQUAL BETWEEN (Not Supported Yet) IN / NOT_IN (Not Supported Yet) LIKE / NOT_LIKE (Not Supported Yet)
+  * EQUALS
+  * GREATER_THAN
+  * GREATER_THAN_OR_EQUAL
+  * NOT_EQUALS
+  * LESS_THAN
+  * LESS_THAN_OR_EQUAL
+  * BETWEEN (Not Supported Yet)
+  * IN / NOT_IN (Not Supported Yet)
+  * LIKE / NOT_LIKE (Not Supported Yet)
+***
+- Search Cookbook / How To Add Search API to your Recipe -
+  * Add to Controller.cs
+  * Add to CQRS.cs
+  * Add to Impl/Query.cs queryHelper ⇒ SqlQueryHelper DI SearchAsync ⇒ Method Name Recipe ⇒ Recipe Name
+  * queryHelper ⇒ SqlQueryHelper DI
+  * SearchAsync ⇒ Method Name
+  * Recipe ⇒ Recipe Name
+Code Example:
+###
+[ApiKey("e0b241b7-f598-434a-b240-2fdbdc176e5f")]
+    [ApiAuthorization(ScopeKeys.List_Pastry_Recipe)]
+    [HttpGet("Search")]
+    public async Task<ApiResponse<List<dynamic>>> Search([FromBody] SearchInputModelBase Parameters)
+    {
+        var cmd = new GetRecipeSearchQuery();
+        var result = await base.Execute<List<dynamic>>(cmd);
+        return result;
+    }
+###
+Code Example:
+###
+namespace Ex.Pastry.Api.Cqrs
+{
+    ...
+    public record GetRecipeSearchQuery() : QueryBase<List<dynamic>>;
+    ...
+###
+Code Example:
+###
+public async Task<List<dynamic>> Handle(GetRecipeSearchQuery message, CancellationToken cancellationToken)
+    {
+        sessionDI.ExecutionTrace.InitTrace();
+
+        var entity = await queryHelper.SearchAsync<dynamic>("Recipe");
+
+        return mapper.Map<List<dynamic>>(entity);
+    }
+###
+

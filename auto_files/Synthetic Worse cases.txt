@@ -1,0 +1,12 @@
+- Worse cases -
+These below items must be be considered as Worse Cases for cake baking and should be very careful on them.
+  * Forgetting an Ingredient: Forgetting an ingredient should not be done until the relevant changes are done by the all public consumers.
+  * Big Size Ovens: Oven size is very important from the performance point of view.
+  * Kitchen Roundtrips: Try to minimize the kitchen roundtrip. Roundtrips may lead you cake to turn out bad.
+  * Oven Roundtrips: Try to minimize the Oven roundtrip. Roundtrips may lead you cake to turn out bad.
+  * Unnecessary Decorations: 
+  * Over Designed Cake: Cake design should be simple but respond to the needs.
+  * Backward Compatibility: 2 or 3 major versions of the recipe should be supported.
+  * Unique Cake Tin: Unique cake tin can slow down insert and update operations. Don’t use it for transaction tables.
+  * Icing Mania: Over-focusing on cake icing, which can lead to complex structures that might not be delicious and maintainable.
+  * Super Slicer 3000 Parallel Mode: 

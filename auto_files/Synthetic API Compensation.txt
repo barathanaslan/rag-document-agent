@@ -1,0 +1,81 @@
+- Fictional Data Processing -
+Because of the nature of fictional data processing architecture, if a fictional process fails, all previous succeeded processes must be compensated. In this example, there are 3 types of compensation for processes.
+***
+- Fictional Process Compensation / None Compensation -
+If a fictional process does not need to be compensated, compensation type can be set as None. In this case, the core layer will do nothing for compensation.
+Code Example:
+###
+[ProcessCode("UpdateCharacter")]
+    [ApiKey("12345")]
+    [Authorization(ScopeKeys.Update_Universe)]
+    [CompensationType(CompensationType.NoneCompensation)]
+    [HttpPut]
+    public async Task<ApiResponse<CharacterOutputModel>> Update([FromBody] CharacterUpdateInputModel body)
+    {
+        ...
+###
+***
+- Fictional Process Compensation / Auto Compensation (default) -
+  * Delete script for insert operation
+  * Insert script for delete operation
+  * Update script for update operation (with previous data)
+In this example, the core layer also logs all the database changes. If a process gets an exception, it fires related compensation events of the previous succeeded processes, and related services catch relevant events and apply compensation logic.
+In compensation logic, reverse scripts of the relevant logged database operations are generated and applied to compensate the request.
+In this option, developers don’t need to do anything.
+Code Example:
+###
+[ApiKey("67890")]
+    [Authorization(ApiAccessType.OnlyAdmin)]
+    [CompensationType(CompensationType.AutoCompensation)]
+    [HttpPost]
+    public async Task<ApiResponse<CharacterOutputModel>> Create([FromBody] CharacterInputModel model)
+    {
+        var cmd = new CreateCharacterTransactionCommand(model);
+
+        var result = await base.Execute<CharacterTransactionOutputModel>(cmd);
+
+        return result;
+    }
+###
+***
+- Fictional Process Compensation / Manual Compensation -
+  * Http method should be same as original process.
+  * Process path should be same as original process with "/Compensate" suffix.
+  * Add "Compensate_" prefix to method name.
+  * Create new command with "Compensate_" prefix and write your compensation logic inside this command.
+  * Parameter of the process and command should be CompensateModel which comes from the framework. This model contains; The business key of the executed process. Output response model of the executed process.
+  * The business key of the executed process.
+  * Output response model of the executed process.
+  * If the process logic is complex like universe management operations and auto compensation is not possible.
+  * If the process gets a huge amount of data as input model.
+  * If there are many processes in a workflow, and one record in an entity is taking many changes.
+If a process should be compensated with business logic (instead of auto compensation, for example, if the compensation of an insert is another insert operation) then a compensation process should also be prepared.
+Code Example:
+###
+[ApiKey("112233")]
+    [CompensationType(CompensationType.ManualCompensation)]
+    [Authorization(ApiAccessType.OnlyAdmin)]
+    [HttpPost("CreateWorld")]
+    public async Task<ApiResponse<UniverseTransactionOutputModel>> CreateWorld([FromBody] UniverseTransactionInputModel model)
+    {
+        UniverseTransactionOutputModel reqModel = (model.OutputModel as JObject).ToObject<UniverseTransactionOutputModel>();
+
+        var cmd = new Compensate_CreateUniverseTransactionCommand(reqModel, model.BusinessKey.ToString());
+
+        var result = await base.Execute<VoidResult>(cmd);
+
+        return result;
+    }
+###
+To compensate this process manually, there should be a compensation process like below.
+Code Example:
+###
+[ApiKey("445566")]
+    [Authorization(ApiAccessType.OnlyAdmin)]
+    [HttpPost("CreateWorld/Compensate")]
+    public async Task<ApiResponse> Compensate_CreateWorld([FromBody] CompensateModel model)
+    {
+        ...
+###
+While creating manual compensation processes, you should apply the following rules:
+Auto Compensation is the default compensation in this example. If some of the following cases exist in your process, then you should consider doing a manual compensation.

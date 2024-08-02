@@ -1,0 +1,381 @@
+- Announcements -
+During the lifetime of a recipe development; for standardization, best practices and keeping up the efficiency, we are distributing technical changes to all team members in this area.
+***
+- Announcements / Migration Cookie File ChangeVersion: 2.19.x -
+  * Migration Cookie file must be as follows with version 2.19.x. The changes apply to versions 2.19.x and later. It does not apply to version 2.18.x.
+Change date: 15.06.2024
+Code Example:
+###
+FROM example.azurecr.io/ex-docker/python/ex-migrator-image as base
+WORKDIR /publish
+
+COPY ["Migration", "."]
+###
+***
+- Announcements / Inventory ServicesVersion: 2.18.x -
+  * From this version,   due to security vulnerability below APIs will be depreciated .
+  * POST api/v2/Inv/InventoryInstances/{InventoryInstanceId}/Sha256
+  * GET api/v2/Inv/InventoryInstances/{InventoryInstanceId}/Content
+  * GET api/v2/Inv/InventoryInstances/{InventoryInstanceId}
+  * DELETE api/v2/Inv/InventoryInstances/{InventoryInstanceId}
+  * GET /api/v2/Inv/InventoryInstances/{InventoryInstanceId}/PdfContent
+  * POST api/v2/Inv/InventoryInstances/{Guid}/Sha256
+  * GET api/v2/Inv/InventoryInstances/{Guid}/Content
+  * GET api/v2/Inv/InventoryInstances/{Guid}
+  * DELETE api/v2/Inv/InventoryInstances/{Guid}
+  * GET /api/v2/Inv/InventoryInstances/{Guid}/PdfContent
+Change date: 02.05.2024
+Below APIs MUST be replaced with above APIs
+***
+- Announcements / Parameter SampleVersion: 2.18.x -
+  * A new column has been added to the parameter system, if you are using the parameter system in your project . You need to create migration for the new column.
+Change date: 17.05.2024
+***
+- Announcements / SMS ServicesVersion: 2.18.x -
+  * From this version, response of api/v2/Notification/Smss/Send, api/v2/Notification/Smss/Verify APIs are changed.
+Change date: 02.05.2024
+Code Example:
+###
+Old Response:
+{
+    "Reasons": [
+        {
+            "Code": 100,
+            "Text": "NotificationDefinition (ADCSMSSMSNONCUS11) mevcut değil.",
+            "Params": [],
+            "Type": "Error"
+        }
+    ],
+    "Success": false,
+    "BusinessKey": "488808544791543809",
+    "MessageKey": "488808544791543808",
+    "SagaOperationStatus": 0,
+}
+###
+Code Example:
+###
+New Response:
+{
+    "Reasons": [
+        {
+            "Code": 100,
+            "Text": "NotificationDefinition (Sms11) mevcut değil.",
+            "Params": [
+                "NotificationDefinition",
+                "Sms11"
+            ],
+            "Service": "Notification",
+            "Type": "Error"
+        }
+    ],
+    "Success": false,
+    "BusinessKey": "488808646827290625",
+    "MessageKey": "488808646827290624",
+    "SagaOperationStatus": 0,
+}
+###
+Code Example:
+###
+Old Response:
+{
+    "Value": {
+        "Result": "Başarılı",
+        "Success": true,
+        "ReferenceKey": "bd3edc63-6795-4ec9-90a2-5d0244b360fd",
+        "Code": "Success"
+    },
+    "Reasons": [],
+    "Success": true,
+    "BusinessKey": "488807454062788609",
+    "MessageKey": "488807454062788608",
+    "SagaOperationStatus": 0,
+}
+###
+Code Example:
+###
+New Response:
+{
+    "Value": {
+        "ReferenceKey": "a794d748-398e-420b-9033-ce5df5cda0f3"
+    },
+    "Reasons": [],
+    "Success": true,
+    "BusinessKey": "488807084272889857",
+    "MessageKey": "488807084272889856",
+    "SagaOperationStatus": 0,
+}
+###
+Code Example:
+###
+Old Response:
+{
+    "Value": {
+        "Result": "Yanlış sms kodu",
+        "Success": false,
+        "ReferenceKey": "5f4e912d-b5c1-4497-8c9f-6202fc278bef",
+        "Code": "WrongSmsCode"
+    },
+    "Reasons": [],
+    "Success": true,
+    "BusinessKey": "488787602677809153",
+    "MessageKey": "488787602677809152",
+    "SagaOperationStatus": 0
+}
+###
+Code Example:
+###
+New Response:
+{
+    "Reasons": [
+        {
+            "Code": 17030,
+            "Text": "Sms kod süresi doldu ReferenceKey-72a1f7df-a98f-493a-8fab-a8ee298d3b68-",
+            "Params": [
+                "ReferenceKey",
+                "72a1f7df-a98f-493a-8fab-a8ee298d3b68-"
+            ],
+            "Service": "Notification",
+            "Type": "Error"
+        }
+    ],
+    "Success": false,
+    "BusinessKey": "488790526354882561",
+    "MessageKey": "488790526354882560",
+    "SagaOperationStatus": 0,
+}
+###
+***
+- Announcements / Version: 2.18.x -
+  * From this version, parameter scripts will have a IF NOT EXISTS clause at the beginning. This change is important and required to not change the parameters which have already been changed by the tenant.
+Change date: 02.05.2024
+Code Example:
+###
+IF NOT EXISTS (SELECT * FROM dbo.ParameterGroup WHERE Code=N'SecurityParameters')
+BEGIN
+    INSERT INTO dbo.ParameterGroup([AllowDelete],[AllowNew],[AllowUpdate],[Code],[CreatedBy],[CreateTime],[Description],[GroupType],[IsActive],[IsCodeVisible],[IsReferenceNumberVisible],[ScopeKeyApprover],[ScopeKeyWriter],[UpdateCount],[UpdatedBy],[UpdateTime])
+    VALUES (1, 1, 1, N'SecurityParameters', N'system', GETDATE(), N'Güvenlik parametreleri.', 1, 1, 1, 1, NULL, NULL, 0, NULL, NULL)
+...
+###
+***
+- Announcements / SDK Versions: 2.18.16 -
+  * The namespace for entity attributes has been changed. If it is not included in the Entity classes, you need to include the Ex.Infra.Schema.Const namespace.
+Change date: 02.05.2024
+***
+- Announcements / SDK Version: 2.17.24 -
+  * The WorkgroupId property in the IExServiceBankingEntity interface has been renamed to OperationWorkgroupId .
+  * The ApplicationIdForServicebanking property in the DBContext has been renamed to ApplicationId .
+Change date: 14.04.2024
+***
+- Announcements / SDK Version: 2.16.37 -
+  * Discontinued Use of IExSmartCache: The IExSmartCache interface is no longer supported and has been removed.
+  * Adoption of IDistributedCache: We are transitioning to the IDistributedCache interface for all future development and enhancements in distributed caching.
+  * Update Your Projects: Replace any usage of IExSmartCache with IDistributedCache. This might involve adjusting your implementation to match the methods and properties of the IDistributedCache interface.
+  * Test Your Changes: Ensure your applications function as expected with the new interface.
+Change date: 09.03.2024
+We’re making a key update to our caching strategy to enhance performance and scalability across our services. As of now, we are moving away from the IExSmartCache interface and will be using the IDistributedCache (Ex.Caching) interface instead.
+Changes:
+What You Need to Do:
+***
+- Announcements / SDK Version: 2.16.1 (master) / 2.15.74 (release/v2.15.74) -
+  * Install NET9 SDKs on your machine. ( https://dotnet.microsoft.com/download/dotnet/9.0 )
+  * Upgrade dotnet-ef to version 9.0.0: dotnet tool update --global dotnet-ef
+  * Upgrade your projects to NET9 (Api and Schema csproj): <PropertyGroup>
+  <TargetFramework>net9.0</TargetFramework>
+</PropertyGroup>
+  * Update your packages to the latest version (Api and Schema csproj). Minimum versions are 2.16.1 for master and 2.15.74 for release/v2.15.74.
+  * Update EntityFrameworkCore packages to '9.0.0': <ItemGroup>
+  <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+  <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
+  <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.0" />
+</ItemGroup>
+  * If project has a IntegrationTest project, update the packages to the latest version (IntegrationTest csproj). Minimum versions are 2.16.1 for master and 2.15.74 for release/v2.15.74. <PropertyGroup>
+  <TargetFramework>net9.0</TargetFramework>
+  ...
+</PropertyGroup>
+
+<ItemGroup>
+  <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
+  ... Infra packages upgrade
+</ItemGroup>
+  * Update the Dockerfile to use NET9 (Api Dockerfile): FROM example.azurecr.io/ex-docker/dotnet/ex-runtime-base:9.0 as base
+WORKDIR /app
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build
+WORKDIR /src
+  * Update the Migration Dockerfile to use NET9. You can simply remove ':8.0'. The base image supports NET9 (Migration Dockerfile): FROM example.azurecr.io/ex-docker/dotnet/ex-migration-base as base
+WORKDIR /publish
+
+COPY ["Migration", "."]
+COPY ["nuget.config", "."]
+
+RUN dotnet new tool-manifest --force
+RUN dotnet tool update --local Ex.Migrator --no-cache
+Change date: 29.02.2024
+With these versions, NET9 support has been added to infrastructure packages. NET7 support has been discontinued from these packages. The infrastructure packages are currently supporting NET8 and NET9 versions.
+Breaking changes in .NET 9: https://learn.microsoft.com/en-us/dotnet/core/compatibility/9.0
+You can follow the steps below to update your projects to NET9:
+Code Example:
+###
+dotnet tool update --global dotnet-ef
+###
+Code Example:
+###
+<PropertyGroup>
+  <TargetFramework>net9.0</TargetFramework>
+</PropertyGroup>
+###
+Code Example:
+###
+<ItemGroup>
+  <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+  <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
+  <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.0" />
+</ItemGroup>
+###
+Code Example:
+###
+<PropertyGroup>
+  <TargetFramework>net9.0</TargetFramework>
+  ...
+</PropertyGroup>
+
+<ItemGroup>
+  <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
+  ... Infra packages upgrade
+</ItemGroup>
+###
+Code Example:
+###
+FROM example.azurecr.io/ex-docker/dotnet/ex-runtime-base:9.0 as base
+WORKDIR /app
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build
+WORKDIR /src
+###
+Code Example:
+###
+FROM example.azurecr.io/ex-docker/dotnet/ex-migration-base as base
+WORKDIR /publish
+
+COPY ["Migration", "."]
+COPY ["nuget.config", "."]
+
+RUN dotnet new tool-manifest --force
+RUN dotnet tool update --local Ex.Migrator --no-cache
+###
+***
+- Announcements / SDK Version: 2.16.20 (master) / 2.15.90 (release/v2.15.0) -
+Change date: 24.02.2024
+ToListAsNoTrackingNoPaginationAsync methods should pass IMessageContext instead of CancellationToken.
+Code Example:
+###
+Old:
+{
+    public static async Task<List<TSource>> ToListAsNoTrackingNoPaginationAsync<TSource>(this IQueryable<TSource> source, CancellationToken cancellationToken, int? queryMaxDataRowCount = 1000)
+}
+###
+Code Example:
+###
+New:
+{
+    public static async Task<List<TSource>> ToListAsNoTrackingNoPaginationAsync<TSource>(this IQueryable<TSource> source, IMessageContext messageContext, int? queryMaxDataRowCount = 1000)
+}
+###
+***
+- Announcements / SDK Version: 2.15.29 (master) -
+  * New Request Property; X-IdempotencyKey property must be sent. Idempotency keys can be anything(except boolean), but they need to be unique. Virtually all popular programming languages provide a function for generating unique strings.
+  * In case transaction is not completed during in predefined timeout duration, transaction will be canceled anyway, and all transcation will be compensated automatically. In the response of request if value of Success property is false , then it means transaction has failed and same value for X-IdempotencyKey property must be sent.
+  * New Values of SagaOperationStatus response property: Finished: Trancsaction completed succcessfuly or unsuccessuly. CanceledDueToTimeout: Transacton is canceled due to timeout. CanceledDueToApprovement: Transacton is canceled since flow is in manuel approvement step.
+  * In the response of request if value of Success property is false , then it means transaction has failed and same value for X-IdempotencyKey property must be sent.
+  * Finished: Trancsaction completed succcessfuly or unsuccessuly.
+  * CanceledDueToTimeout: Transacton is canceled due to timeout.
+  * CanceledDueToApprovement: Transacton is canceled since flow is in manuel approvement step.
+Change date: 19.01.2024
+While using API’s which is used to start a process, in case X-WaitProcessCompleted = true property is sent as request header, which is used to get response of execution synchronous, below breaking changes must be applied.
+Code Example:
+###
+Old Response:
+{
+    "Value": {
+        "Status": "InProgress",
+        "HttpStatusCode": 0,
+        "Payload": {
+            "ProcessCode": "TEST900031",
+            "Name": "Playground Saga 31",
+            "Description": "This process will be used to test the features of SAGA."
+        }
+    },
+    "Reasons": [],
+    "Success": true,
+    "BusinessKey": "448154963275227137",
+    "MessageKey": "448154963661103104",
+    "SagaOperationStatus": 0
+}
+###
+Code Example:
+###
+New Response:
+{
+    "Value": {
+        "ProcessCode": "TEST900030",
+        "Name": "Playground Saga 30",
+        "Description": "This process will be used to test the features of SAGA."
+    },
+    "Reasons": [
+        {
+            "Code": 1065,
+            "Text": "Operation could not completed. Try again later.",
+            "Type": "Error"
+        }
+    ],
+    "Success": false,
+    "BusinessKey": "448186617427734529",
+    "MessageKey": "448186617427734528",
+    "SagaOperationStatus": "Finished"
+}
+###
+***
+- Announcements / SDK Version: 2.15.18 (master) / 2.14.167 (release/v2.14.1) -
+  * Use IScriptingHelper instead of ScriptingHelper.
+Change date: 18.01.2024
+There are some changes in the ScriptingHelper method in this version. This method is no longer provided by default from the Ex.Infra repository.
+It is provided through a new nuget called Ex.Infra.Scripting.
+With this version, you need to make the following changes in your code.
+First, the Ex.Infra.Scripting nuget package should be added to your project.
+Code Example:
+###
+<PackageReference Include="Ex.Infra.Scripting" Version="2.15.18" />
+###
+Then this nuget should be registered in the AutofacModule class.
+Code Example:
+###
+builder.RegisterExScripting();
+###
+***
+- Announcements / SDK Version: 2.15.10 -
+If you are one of the following modules or if your module will use the report sp execution structure.
+You must perform the following reference and registration operations.
+Code Example:
+###
+<PackageReference Include="Ex.Persistence.Relational.Reporting" Version="2.15.10" />
+
+builder.RegisterExPersistenceRelationalReportingModule();
+###
+List of existing modules affected
+***
+- Announcements / SDK Version: 2.15.4 -
+ApiResponseActionFilter changed to ApiCustomResponseActionFilter.
+You can just change the name of ApiResponseActionFilter to ApiCustomResponseActionFilter.
+***
+- Announcements / SDK Version: 2.14.55 -
+After this SDK version, EntityAttribute is mandatory for EntityBase classes. If implementation is not done, "Cannot use EntityBaseWithBaseFieldsWithIdentity class without implementing EntityAttribute." exception will be fired when dbcontext is requested in API requests.
+***
+- Announcements / SDK Version: 2.13.3 -
+ExOptionsSingleton class has been deprecated and IExOptions must be used instead.
+
